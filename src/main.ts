@@ -1,32 +1,10 @@
 import './style.css'
-import typescriptLogo from './typescript.svg'
-import { setupCounter } from './counter'
-
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
-
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
 //-------------------
 
 const svg = document.querySelector("#svg");
 
 const a = [30, 150];
-const ab = [290, 30];
+const b = [290, 30];
 const c = [550, 450];
 // const dist = 180;
 
@@ -48,13 +26,37 @@ const pointOnVector = (start: number[], normVec: number[], len: number) => {
     ? [start[0] + normVec[0] * len, start[1] + normVec[1] * len]
     : [start[0] - normVec[0] * len, start[1] - normVec[1] * len];
 };
+
+
+
 //линия отрезка
+interface Path {
+  (start: number[], end: number[], cl: string, col: string): string;
+}
 const showPath = (start: number[], end: number[], cl: string, col: string) =>
   `<path class=${cl} d="M ${start[0]} ${start[1]} L ${end[0]} ${end[1]}" stroke=${col} />`;
+
+//квадратичная кривая
+interface Curve {
+  (start: number[], end: number[], control: number[], cl: string, col: string): string;
+}
+const showCurve = (start: number[], end: number[], control: number[], cl: string, col: string) =>
+  `<path class=${cl} d="M ${start[0]} ${start[1]} Q ${control[0]} ${control[1]}, ${end[0]} ${end[1]}" stroke=${col} />`;
 //render svg
-const render = (start: number[], end: number[], cl: string, col: string): string =>
+const render = (callback: string): string =>
+
+  (svg ? svg.innerHTML += callback() : '0');
+
+
+
+
+
+//render svg curve
+const renderQCurve = (start: number[], end: number[], constol: number[], cl: string, col: string): string =>
 
   (svg ? svg.innerHTML += showPath(start, end, cl, col) : '0');
+
+
 //Находим перпендикулярный вектор
 const getPerpOfLine = (normVec: number[], len: number) => {
   const nx = normVec[0] * len;
@@ -62,39 +64,90 @@ const getPerpOfLine = (normVec: number[], len: number) => {
   return [-ny, nx];
 };
 
-
-
-2;
-//Находим угол в радианах
-const vec1 = vector(a, ab);
-const vec2 = vector(ab, c);
+const vec1 = vector(a, b);
+const vec2 = vector(b, c);
 const normVec1 = normalize(vec1);
 const normVec2 = normalize(vec2);
-const pointM = pointOnVector(ab, normVec1, 100);
-const pointN = pointOnVector(ab, normVec2, 100);
-render(a, ab, "aab", "green");
-render(ab, c, "abc", "red");
-render(
+const pointM = pointOnVector(b, normVec1, 100);
+const pointN = pointOnVector(b, normVec2, 100);
+const pointMPerp = [
+  pointM[0] + getPerpOfLine(normVec1, 300)[0],
+  pointM[1] + getPerpOfLine(normVec1, 300)[1],
+];
+const pointNPerp = [
+  pointN[0] + getPerpOfLine(normVec2, 300)[0],
+  pointN[1] + getPerpOfLine(normVec2, 300)[1],
+];
+render(showPath(a, b, "aab", "green"));
+render(showPath(b, c, "abc", "red"));
+render(showPath(
   pointM,
-  [
-    pointM[0] + getPerpOfLine(normVec1, 300)[0],
-    pointM[1] + getPerpOfLine(normVec1, 300)[1],
-  ],
+  pointMPerp,
   "perpppp",
   "black"
-);
-render(
+));
+render(showPath(
   pointN,
-  [
-    pointN[0] + getPerpOfLine(normVec2, 300)[0],
-    pointN[1] + getPerpOfLine(normVec2, 300)[1],
-  ],
+  pointNPerp,
   "perppppnn",
   "black"
-);
+));
 console.log(vec1, normVec1, pointM);
 console.log(vec2, normVec2, pointN);
 
+
+// 2. Находим координату точки пересечения перпендикуляров и радиус дуги
+
+// line intercept math by Paul Bourke http://paulbourke.net/geometry/pointlineplane/
+// Determine the intersection point of two line segments
+// Return FALSE if the lines don't intersect
+function intersect(startFirst: number[], endFirst: number[], startSecond: number[], endSecond: number[]) {
+  const [x1, y1] = startFirst;
+  const [x2, y2] = endFirst;
+  const [x3, y3] = startSecond;
+  const [x4, y4] = endSecond;
+  // Check if none of the lines are of length 0
+  if ((x1 === x2 && y1 === y2) || (x3 === x4 && y3 === y4)) {
+    return false;
+  }
+
+  const denominator = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+
+  // Lines are parallel
+  if (denominator === 0) {
+    return false;
+  }
+
+  let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
+  let ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denominator;
+
+  // is the intersection along the segments
+  if (ua < 0 || ua > 1 || ub < 0 || ub > 1) {
+    return false;
+  }
+
+  // Return a object with the x and y coordinates of the intersection
+  let x = x1 + ua * (x2 - x1);
+  let y = y1 + ua * (y2 - y1);
+
+  return [x, y];
+}
+
+let o = intersect(pointM, pointMPerp, pointN,  pointNPerp);
+
+const radius = o === false ? 0 : lengthVector(pointM, o);
+console.log(o, radius);
+
+//3. Строим дугу
+
+const arc = `<path d="M ${pointM[0]} ${pointM[1]} A ${radius} ${radius} 0 0 1 ${pointN[0]} ${pointN[1]}" stroke="grey" fill="none" />`;
+
+svg ? svg.innerHTML += arc: 0;
+
+const curveQ = `<path d="M ${pointM[0]} ${pointM[1]} Q ${b[0]} ${b[1]}, ${pointN[0]} ${pointN[1]}" stroke="black" fill="none" />`;
+
+svg ? svg.innerHTML += curveQ : 0;
+//Находим угол в радианах
 // const angle = (start, end) => Math.atan2(end[1] - start[1], end[0] - start[0]);
 
 // const showPerpendicularAngle = (start, len, angle, cl, col) =>
@@ -143,64 +196,6 @@ console.log(vec2, normVec2, pointN);
 // );
 
 // svg.innerHTML = aPath + bPath + aPerpendicular + bPerpendicular;
-
-// 2. Находим координату точки пересечения перпендикуляров и радиус дуги
-
-// line intercept math by Paul Bourke http://paulbourke.net/geometry/pointlineplane/
-// Determine the intersection point of two line segments
-// Return FALSE if the lines don't intersect
-function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
-  // Check if none of the lines are of length 0
-  if ((x1 === x2 && y1 === y2) || (x3 === x4 && y3 === y4)) {
-    return false;
-  }
-
-  const denominator = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
-
-  // Lines are parallel
-  if (denominator === 0) {
-    return false;
-  }
-
-  let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
-  let ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denominator;
-
-  // is the intersection along the segments
-  if (ua < 0 || ua > 1 || ub < 0 || ub > 1) {
-    return false;
-  }
-
-  // Return a object with the x and y coordinates of the intersection
-  let x = x1 + ua * (x2 - x1);
-  let y = y1 + ua * (y2 - y1);
-
-  return [x, y];
-}
-
-// let o = intersect(
-//   a[0],
-//   a[1],
-//   -Math.sin(angleAB) * dist + a[0],
-//   Math.cos(angleAB) * dist + a[1],
-//   c[0],
-//   c[1],
-//   -Math.sin(angleBC) * dist + c[0],
-//   Math.cos(angleBC) * dist + c[1]
-// );
-
-// console.log(o);
-
-// let dt1 = Math.sqrt((x2-x1)**2+(y2-y1)**2);
-// let dt = Math.sqrt((o[0]-a[0])**2+(o[1]-a[1])**2);
-// let dt = Math.hypot(o[0] - a[0], o[1] - a[1]);
-
-// console.log(dt);
-
-//3. Строим дугу
-
-// const arc = `<path d="M ${a[0]} ${a[1]} A ${dt} ${dt} 0 0 1 ${c[0]} ${c[1]}" stroke="grey" fill="none" />`;
-
-// svg.innerHTML += arc;
 
 //--------------
 //x1=lsinθ+x

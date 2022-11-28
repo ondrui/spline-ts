@@ -6,6 +6,9 @@ const svg = document.querySelector("#svg");
 const a = [30, 150];
 const b = [290, 30];
 const c = [550, 450];
+const d = [700, 250];
+const e = [800, 600];
+const f = [900, 100];
 // const dist = 180;
 
 // Задаем вектор по координатам
@@ -21,41 +24,28 @@ const lengthVector = (start: number[], end: number[]):number =>
 //Нормализация вектора
 const normalize = ({ vec, length }: {vec: number[]; length: number}): number[] => [vec[0] / length, vec[1] / length];
 // Нахождение координаты точки на векторе
-const pointOnVector = (start: number[], normVec: number[], len: number) => {
+const pointOnVectorTop = (start: number[], normVec: number[], len: number) => {
   return normVec[1] > 0
+    ? [start[0] + normVec[0] * len, start[1] + normVec[1] * len]
+    : [start[0] - normVec[0] * len, start[1] - normVec[1] * len];
+};
+const pointOnVectorBottom = (start: number[], normVec: number[], len: number) => {
+  return normVec[1] < 0
     ? [start[0] + normVec[0] * len, start[1] + normVec[1] * len]
     : [start[0] - normVec[0] * len, start[1] - normVec[1] * len];
 };
 
 
-
 //линия отрезка
-interface Path {
-  (start: number[], end: number[], cl: string, col: string): string;
+const showPath = (start: number[], end: number[], cl: string, col: string) => {
+  const p = `<path class=${cl} d="M ${start[0]} ${start[1]} L ${end[0]} ${end[1]}" stroke=${col} />`;
+  svg ? svg.innerHTML += p : '0';
 }
-const showPath = (start: number[], end: number[], cl: string, col: string) =>
-  `<path class=${cl} d="M ${start[0]} ${start[1]} L ${end[0]} ${end[1]}" stroke=${col} />`;
-
 //квадратичная кривая
-interface Curve {
-  (start: number[], end: number[], control: number[], cl: string, col: string): string;
+const showCurve = (start: number[], end: number[], control: number[], cl: string, col: string) => {
+  const p = `<path class=${cl} d="M ${start[0]} ${start[1]} Q ${control[0]} ${control[1]}, ${end[0]} ${end[1]}" stroke=${col} fill="none" />`;
+  svg ? svg.innerHTML += p : '0';
 }
-const showCurve = (start: number[], end: number[], control: number[], cl: string, col: string) =>
-  `<path class=${cl} d="M ${start[0]} ${start[1]} Q ${control[0]} ${control[1]}, ${end[0]} ${end[1]}" stroke=${col} />`;
-//render svg
-const render = (callback: string): string =>
-
-  (svg ? svg.innerHTML += callback() : '0');
-
-
-
-
-
-//render svg curve
-const renderQCurve = (start: number[], end: number[], constol: number[], cl: string, col: string): string =>
-
-  (svg ? svg.innerHTML += showPath(start, end, cl, col) : '0');
-
 
 //Находим перпендикулярный вектор
 const getPerpOfLine = (normVec: number[], len: number) => {
@@ -66,10 +56,35 @@ const getPerpOfLine = (normVec: number[], len: number) => {
 
 const vec1 = vector(a, b);
 const vec2 = vector(b, c);
+const vec3 = vector(c, d);
+const vec4 = vector(d, e);
+const vec5 = vector(e, f);
 const normVec1 = normalize(vec1);
 const normVec2 = normalize(vec2);
-const pointM = pointOnVector(b, normVec1, 100);
-const pointN = pointOnVector(b, normVec2, 100);
+const normVec3 = normalize(vec3);
+const normVec4 = normalize(vec4);
+const normVec5 = normalize(vec5);
+const pointM = pointOnVectorTop(b, normVec1, 100);
+const pointN = pointOnVectorTop(b, normVec2, 100);
+const pointO = pointOnVectorBottom(c, normVec2, 100);
+const pointP = pointOnVectorBottom(c, normVec3, 100);
+const pointR = pointOnVectorTop(d, normVec3, 100);
+const pointS = pointOnVectorTop(d, normVec4, 100);
+const pointT = pointOnVectorBottom(e, normVec4, 100);
+const pointY = pointOnVectorBottom(e, normVec5, 100);
+console.log(normVec1, normVec2, normVec3, normVec4, normVec5);
+showPath(a, b, "ab", "green");
+showPath(b, c, "bc", "red");
+showPath(c, d, "cd", "orange");
+showPath(d, e, "de", "blue");
+showPath(e, f, "ef", "teal");
+
+showCurve(pointM, pointN, b, "curve", "black");
+showCurve(pointO, pointP, c, "curve", "black");
+showCurve(pointR, pointS, d, "curve", "black");
+showCurve(pointT, pointY, e, "curve", "black");
+// showCurve(pointO, pointP, d, "curve", "black");
+//====================
 const pointMPerp = [
   pointM[0] + getPerpOfLine(normVec1, 300)[0],
   pointM[1] + getPerpOfLine(normVec1, 300)[1],
@@ -78,22 +93,20 @@ const pointNPerp = [
   pointN[0] + getPerpOfLine(normVec2, 300)[0],
   pointN[1] + getPerpOfLine(normVec2, 300)[1],
 ];
-render(showPath(a, b, "aab", "green"));
-render(showPath(b, c, "abc", "red"));
-render(showPath(
+showPath(
   pointM,
   pointMPerp,
   "perpppp",
   "black"
-));
-render(showPath(
+);
+showPath(
   pointN,
   pointNPerp,
   "perppppnn",
   "black"
-));
-console.log(vec1, normVec1, pointM);
-console.log(vec2, normVec2, pointN);
+);
+// console.log(vec1, normVec1, pointM);
+// console.log(vec2, normVec2, pointN);
 
 
 // 2. Находим координату точки пересечения перпендикуляров и радиус дуги
@@ -136,7 +149,7 @@ function intersect(startFirst: number[], endFirst: number[], startSecond: number
 let o = intersect(pointM, pointMPerp, pointN,  pointNPerp);
 
 const radius = o === false ? 0 : lengthVector(pointM, o);
-console.log(o, radius);
+// console.log(o, radius);
 
 //3. Строим дугу
 
@@ -144,9 +157,9 @@ const arc = `<path d="M ${pointM[0]} ${pointM[1]} A ${radius} ${radius} 0 0 1 ${
 
 svg ? svg.innerHTML += arc: 0;
 
-const curveQ = `<path d="M ${pointM[0]} ${pointM[1]} Q ${b[0]} ${b[1]}, ${pointN[0]} ${pointN[1]}" stroke="black" fill="none" />`;
+// const curveQ = `<path d="M ${pointM[0]} ${pointM[1]} Q ${b[0]} ${b[1]}, ${pointN[0]} ${pointN[1]}" stroke="black" fill="none" />`;
 
-svg ? svg.innerHTML += curveQ : 0;
+// svg ? svg.innerHTML += curveQ : 0;
 //Находим угол в радианах
 // const angle = (start, end) => Math.atan2(end[1] - start[1], end[0] - start[0]);
 

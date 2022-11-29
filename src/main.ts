@@ -1,4 +1,4 @@
-import './style.css'
+import "./style.css";
 //-------------------
 
 const svg = document.querySelector("#svg");
@@ -9,6 +9,7 @@ const c = [550, 450];
 const d = [700, 250];
 const e = [800, 600];
 const f = [900, 100];
+
 // const dist = 180;
 
 // Задаем вектор по координатам
@@ -19,33 +20,133 @@ const vector = (start: number[], finish: number[]) => {
   };
 };
 //Длина вектора по координатам
-const lengthVector = (start: number[], end: number[]):number =>
+const lengthVector = (start: number[], end: number[]): number =>
   Math.hypot(end[1] - start[1], end[0] - start[0]);
 //Нормализация вектора
-const normalize = ({ vec, length }: {vec: number[]; length: number}): number[] => [vec[0] / length, vec[1] / length];
+const normalize = ({
+  vec,
+  length,
+}: {
+  vec: number[];
+  length: number;
+}): number[] => [vec[0] / length, vec[1] / length];
 // Нахождение координаты точки на векторе
 const pointOnVectorTop = (start: number[], normVec: number[], len: number) => {
   return normVec[1] > 0
     ? [start[0] + normVec[0] * len, start[1] + normVec[1] * len]
     : [start[0] - normVec[0] * len, start[1] - normVec[1] * len];
 };
-const pointOnVectorBottom = (start: number[], normVec: number[], len: number) => {
+const pointOnVectorBottom = (
+  start: number[],
+  normVec: number[],
+  len: number
+) => {
   return normVec[1] < 0
     ? [start[0] + normVec[0] * len, start[1] + normVec[1] * len]
     : [start[0] - normVec[0] * len, start[1] - normVec[1] * len];
 };
 
-
 //линия отрезка
 const showPath = (start: number[], end: number[], cl: string, col: string) => {
   const p = `<path class=${cl} d="M ${start[0]} ${start[1]} L ${end[0]} ${end[1]}" stroke=${col} />`;
-  svg ? svg.innerHTML += p : '0';
-}
+  svg ? (svg.innerHTML += p) : "0";
+};
 //квадратичная кривая
-const showCurve = (start: number[], end: number[], control: number[], cl: string, col: string) => {
+const showCurve = (
+  start: number[],
+  end: number[],
+  control: number[],
+  cl: string,
+  col: string
+) => {
   const p = `<path class=${cl} d="M ${start[0]} ${start[1]} Q ${control[0]} ${control[1]}, ${end[0]} ${end[1]}" stroke=${col} fill="none" />`;
-  svg ? svg.innerHTML += p : '0';
-}
+  svg ? (svg.innerHTML += p) : "0";
+};
+
+//=================
+//Функция отрисовки кривой
+const arrPoints = [
+  [30, 120],
+  [290, 10],
+  [500, 230],
+  [700, 220],
+  [800, 580],
+  [900, 80],
+  [1000, 50],
+  [1050, 20],
+  [1200, 100],
+  [1250, 400],
+];
+type CommandFunction = (point: number[], i: number, a: number[][]) => string;
+
+const svgPath = (points: number[][], command: CommandFunction): string => {
+  // build the d attributes by looping over the points
+  const d = points.reduce(
+    (acc, point, i, a) =>
+      i === 0
+        ? // if first point
+          `M ${point[0]},${point[1]}`
+        : // else
+          `${acc} ${command(point, i, a)}`,
+    ""
+  );
+  return `<path d="${d}" fill="none" stroke="teal" stroke-width="3" />`;
+};
+//A basic lineCommand function to draw straight lines
+const lineCommand = (point: number[]) => `L ${point[0]} ${point[1]}`;
+
+svg ? (svg.innerHTML = svgPath(arrPoints, lineCommand)) : "0";
+
+//a function to find the properties of the opposed-line
+type Line = (
+  pointA: number[],
+  pointB: number[]
+) => { length: number; angle: number };
+
+const line: Line = (pointA, pointB) => {
+  const lengthX = pointB[0] - pointA[0];
+  const lengthY = pointB[1] - pointA[1];
+  return {
+    length: Math.hypot(lengthX, lengthY),
+    angle: Math.atan2(lengthY, lengthX),
+  };
+};
+
+//a function to find the position of a control point
+const controlPoint = (
+  current: number[],
+  previous: number[],
+  next: number[],
+  reverse?: boolean
+): number[] => {
+  // When 'current' is the first or last point of the array
+  // 'previous' or 'next' don't exist.
+  // Replace with 'current'
+  const p = previous ?? current;
+  const n = next ?? current;
+  // The smoothing ratio
+  const smoothing = 0.1;
+  // Properties of the opposed-line
+  const o = line(p, n);
+  // If is end-control-point, add PI to the angle to go backward
+  const angle = o.angle + (reverse ? Math.PI : 0);
+  const length = o.length * smoothing;
+  // The control point position is relative to the current point
+  const x = current[0] + Math.cos(angle) * length;
+  const y = current[1] + Math.sin(angle) * length;
+  return [x, y];
+};
+
+// Create the bezier curve command
+const bezierCommand: CommandFunction = (point, i, a) => {
+  // start control point
+  const [cpsX, cpsY] = controlPoint(a[i - 1], a[i - 2], point);
+  // end control point
+  const [cpeX, cpeY] = controlPoint(point, a[i - 1], a[i + 1], true);
+  return `C ${cpsX},${cpsY} ${cpeX},${cpeY} ${point[0]},${point[1]}`;
+};
+
+svg ? (svg.innerHTML += svgPath(arrPoints, bezierCommand)) : "0";
 
 //Находим перпендикулярный вектор
 const getPerpOfLine = (normVec: number[], len: number) => {
@@ -64,14 +165,14 @@ const normVec2 = normalize(vec2);
 const normVec3 = normalize(vec3);
 const normVec4 = normalize(vec4);
 const normVec5 = normalize(vec5);
-const pointM = pointOnVectorTop(b, normVec1, 100);
-const pointN = pointOnVectorTop(b, normVec2, 100);
-const pointO = pointOnVectorBottom(c, normVec2, 100);
-const pointP = pointOnVectorBottom(c, normVec3, 100);
-const pointR = pointOnVectorTop(d, normVec3, 100);
-const pointS = pointOnVectorTop(d, normVec4, 100);
-const pointT = pointOnVectorBottom(e, normVec4, 100);
-const pointY = pointOnVectorBottom(e, normVec5, 100);
+const pointM = pointOnVectorTop(b, normVec1, 20);
+const pointN = pointOnVectorTop(b, normVec2, 20);
+const pointO = pointOnVectorBottom(c, normVec2, 20);
+const pointP = pointOnVectorBottom(c, normVec3, 20);
+const pointR = pointOnVectorTop(d, normVec3, 20);
+const pointS = pointOnVectorTop(d, normVec4, 20);
+const pointT = pointOnVectorBottom(e, normVec4, 20);
+const pointY = pointOnVectorBottom(e, normVec5, 20);
 console.log(normVec1, normVec2, normVec3, normVec4, normVec5);
 showPath(a, b, "ab", "green");
 showPath(b, c, "bc", "red");
@@ -93,28 +194,22 @@ const pointNPerp = [
   pointN[0] + getPerpOfLine(normVec2, 300)[0],
   pointN[1] + getPerpOfLine(normVec2, 300)[1],
 ];
-showPath(
-  pointM,
-  pointMPerp,
-  "perpppp",
-  "black"
-);
-showPath(
-  pointN,
-  pointNPerp,
-  "perppppnn",
-  "black"
-);
+showPath(pointM, pointMPerp, "perpppp", "black");
+showPath(pointN, pointNPerp, "perppppnn", "black");
 // console.log(vec1, normVec1, pointM);
 // console.log(vec2, normVec2, pointN);
-
 
 // 2. Находим координату точки пересечения перпендикуляров и радиус дуги
 
 // line intercept math by Paul Bourke http://paulbourke.net/geometry/pointlineplane/
 // Determine the intersection point of two line segments
 // Return FALSE if the lines don't intersect
-function intersect(startFirst: number[], endFirst: number[], startSecond: number[], endSecond: number[]) {
+function intersect(
+  startFirst: number[],
+  endFirst: number[],
+  startSecond: number[],
+  endSecond: number[]
+) {
   const [x1, y1] = startFirst;
   const [x2, y2] = endFirst;
   const [x3, y3] = startSecond;
@@ -146,7 +241,7 @@ function intersect(startFirst: number[], endFirst: number[], startSecond: number
   return [x, y];
 }
 
-let o = intersect(pointM, pointMPerp, pointN,  pointNPerp);
+let o = intersect(pointM, pointMPerp, pointN, pointNPerp);
 
 const radius = o === false ? 0 : lengthVector(pointM, o);
 // console.log(o, radius);
@@ -155,7 +250,7 @@ const radius = o === false ? 0 : lengthVector(pointM, o);
 
 const arc = `<path d="M ${pointM[0]} ${pointM[1]} A ${radius} ${radius} 0 0 1 ${pointN[0]} ${pointN[1]}" stroke="grey" fill="none" />`;
 
-svg ? svg.innerHTML += arc: 0;
+svg ? (svg.innerHTML += arc) : 0;
 
 // const curveQ = `<path d="M ${pointM[0]} ${pointM[1]} Q ${b[0]} ${b[1]}, ${pointN[0]} ${pointN[1]}" stroke="black" fill="none" />`;
 
@@ -164,10 +259,10 @@ svg ? svg.innerHTML += arc: 0;
 // const angle = (start, end) => Math.atan2(end[1] - start[1], end[0] - start[0]);
 
 // const showPerpendicularAngle = (start, len, angle, cl, col) =>
-  //перпендикуляр к линии с использованием угла
-  // `<path class=${cl} d="M ${start[0]} ${start[1]} L ${
-    // -Math.sin(angle) * len + start[0]
-  // } ${Math.cos(angle) * len + start[1]}" stroke=${col} />`;
+//перпендикуляр к линии с использованием угла
+// `<path class=${cl} d="M ${start[0]} ${start[1]} L ${
+// -Math.sin(angle) * len + start[0]
+// } ${Math.cos(angle) * len + start[1]}" stroke=${col} />`;
 
 // данные ------------------
 
